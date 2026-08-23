@@ -266,10 +266,11 @@ export async function updateMarketData({
 async function main() {
   const result = await updateMarketData();
   if (!result.changed) {
-    console.log(`No new market data (existing latest: ${result.existingLatestDate})`);
+    console.log(`No new market data. Existing latest date: ${result.existingLatestDate}.`);
     return;
   }
-  console.log(`Updated all five market series: ${result.addedDates.join(", ")}`);
+  console.log(`New market data found: ${result.addedDates.at(-1)}.`);
+  console.log("Updated symbols: 002714, 300498, 000876, 605296, 159867");
 }
 
 const isMain = process.argv[1]
