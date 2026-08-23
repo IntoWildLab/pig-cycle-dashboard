@@ -1,26 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { historyById } from "./marketHistory";
+import { deriveCycleSignals } from "./cycleSignals";
+import { dashboardData, series, type Point, type Series } from "./dashboardData";
 
-type Point = { date: string; value: number };
-type MarketStatus = "officialClose" | "sampleObservation" | "stale";
-type Series = {
-  id: string;
-  name: string;
-  code: string;
-  kind: "行业" | "公司" | "ETF";
-  color: string;
-  unit: string;
-  latest: number;
-  latestDate: string;
-  change: number;
-  marketStatus: MarketStatus;
-  sourceName: string;
-  sourceUrl: string;
-  history: Point[];
-  nav?: { value: number; date: string; sourceUrl: string };
-};
 type ComparisonItem = Series & {
   startValue: number;
   endValue: number;
@@ -52,61 +35,9 @@ type PriceView = {
   warning: string | null;
 };
 
-const MARKET_CUTOFF = "2026-08-21";
-const PAGE_UPDATED_DATE = "2026-08-23";
+const MARKET_CUTOFF = dashboardData.market.cutoff;
+const PAGE_UPDATED_DATE = dashboardData.market.pageUpdatedDate;
 const TREND_THRESHOLD = 1;
-
-// 证券序列只保存交易所正式收盘价；ETF NAV 仅作辅助信息，不参与任何比较。
-// 猪价序列只保存可核验的真实观察点，不插值、不补造日频数据。
-const series: Series[] = [
-  {
-    id: "pig", name: "全国外三元", code: "公开报价样本", kind: "行业", color: "#d45a42",
-    unit: "元/公斤", latest: 11.15, latestDate: "2026-08-23", change: 0.03,
-    marketStatus: "sampleObservation", sourceName: "中国养猪网价格页",
-    sourceUrl: "https://zhujia.zhuwang.com.cn/indexov.shtml",
-    history: historyById.pig,
-  },
-  {
-    id: "muyuan", name: "牧原股份", code: "002714", kind: "公司", color: "#ca7348",
-    unit: "元", latest: 39.07, latestDate: "2026-08-21", change: -1.88,
-    marketStatus: "officialClose", sourceName: "英为财情历史行情（每日收盘字段）",
-    sourceUrl: "https://cn.investing.com/equities/muyuan-foodstuff-a-historical-data",
-    history: historyById.muyuan,
-  },
-  {
-    id: "wens", name: "温氏股份", code: "300498", kind: "公司", color: "#d99b2b",
-    unit: "元", latest: 13.59, latestDate: "2026-08-21", change: -1.45,
-    marketStatus: "officialClose", sourceName: "英为财情历史行情（每日收盘字段）",
-    sourceUrl: "https://cn.investing.com/equities/guangdong-wens-foodstuff-historical-data",
-    history: historyById.wens,
-  },
-  {
-    id: "newhope", name: "新希望", code: "000876", kind: "公司", color: "#4c9273",
-    unit: "元", latest: 6.90, latestDate: "2026-08-21", change: -1.85,
-    marketStatus: "officialClose", sourceName: "英为财情历史行情（每日收盘字段）",
-    sourceUrl: "https://cn.investing.com/equities/new-hope-liuhe-a-historical-data",
-    history: historyById.newhope,
-  },
-  {
-    id: "shennong", name: "神农集团", code: "605296", kind: "公司", color: "#4f7fa8",
-    unit: "元", latest: 30.23, latestDate: "2026-08-21", change: -0.62,
-    marketStatus: "officialClose", sourceName: "英为财情历史行情（每日收盘字段）",
-    sourceUrl: "https://cn.investing.com/equities/shennong-agricultural-industry-historical-data",
-    history: historyById.shennong,
-  },
-  {
-    id: "etf", name: "畜牧ETF", code: "159867", kind: "ETF", color: "#7867a4",
-    unit: "元", latest: 0.541, latestDate: "2026-08-21", change: -1.64,
-    marketStatus: "officialClose", sourceName: "英为财情历史行情（每日交易收盘价）",
-    sourceUrl: "https://cn.investing.com/etfs/159867-historical-data",
-    history: historyById.etf,
-    nav: {
-      value: 0.5505,
-      date: "2026-08-20",
-      sourceUrl: "https://fund.eastmoney.com/cnjy_jzzzl.html",
-    },
-  },
-];
 
 const rangeStartBoundary: Record<string, string> = {
   "1周": "2026-08-13",
@@ -118,13 +49,13 @@ const timelineEvents = [
   { date: "04.14", type: "猪价拐点", tone: "turn", title: "阶段底点 8.59 元/公斤", note: "三个月窗口外参考；随后猪价缓慢修复。" },
   { date: "06.05", type: "经营数据", tone: "report", title: "牧原发布 5 月销售简报", note: "销售均价仍在低位，跟踪成本领先优势。" },
   { date: "07.09", type: "猪价拐点", tone: "turn", title: "全国生猪 11.35 元/公斤", note: "周度样本阶段高点，之后回落。" },
-  { date: "07.16", type: "产能政策", tone: "policy", title: "Q2 能繁母猪 3780 万头", note: "同比下降 6.5%，为正常保有量的 100.8%。" },
+  { date: "07.16", type: "产能政策", tone: "policy", title: `Q2 能繁母猪 ${dashboardData.sow.count} 万头`, note: `同比${dashboardData.sow.yoy < 0 ? "下降" : "上升"} ${Math.abs(dashboardData.sow.yoy).toFixed(1)}%，为正常保有量的 100.8%。` },
   { date: "08.20", type: "财报日历", tone: "report", title: "牧原 2026 半年报预约披露日", note: "已到预约日期，待核验披露结果；重点看完全成本、亏损与现金流。" },
 ];
 
 const metrics = [
   {
-    icon: "pig" as const, label: "全国外三元", value: "11.15", unit: "元/公斤", delta: "+0.03", date: "2026-08-23",
+    icon: "pig" as const, label: "全国外三元", value: dashboardData.pigGrainRatio.pigPrice.toFixed(2), unit: "元/公斤", delta: "+0.03", date: series.find((item) => item.id === "pig")!.latestDate,
     tone: "price-up", impactTone: "favorable", impact: "卖猪收入通常改善",
     source: "中国养猪网价格页", sourceUrl: "https://zhujia.zhuwang.com.cn/indexov.shtml",
     scope: "全国外三元公开报价样本 · 非政府统计",
@@ -145,39 +76,46 @@ const metrics = [
     explanation: "农业农村部全国监测系列中的豆粕平均价格为 3.23 元/公斤，页面统一换算为 3,230 元/吨。与玉米、育肥猪配合饲料来自同一周度数据体系。",
   },
   {
-    icon: "ratio" as const, label: "自计算猪粮比", value: "4.64", unit: ": 1", delta: "非官方值", date: "2026-08-23",
+    icon: "ratio" as const, label: "自计算猪粮比", value: dashboardData.pigGrainRatio.value.toFixed(2), unit: ": 1", delta: "非官方值", date: dashboardData.pigGrainRatio.date,
     tone: "warning", impactTone: "favorable", impact: "养殖利润通常改善",
     source: "中国养猪网价格页", sourceUrl: "https://zhujia.zhuwang.com.cn/indexov.shtml",
-    scope: "11.15 元/公斤 ÷ 2.405 元/公斤 ≈ 4.64",
-    explanation: "自计算猪粮比 = 同口径全国外三元猪价 ÷ 同口径玉米价格。本期为 11.15 ÷ 2.405 ≈ 4.64。计算所用玉米价格采用独立现货口径，与首页农业农村部全国玉米监测均价 2,470 元/吨不是同一数据序列；该结果不是政府发布的官方猪粮比。",
+    scope: `${dashboardData.pigGrainRatio.pigPrice.toFixed(2)} 元/公斤 ÷ ${dashboardData.pigGrainRatio.cornPrice.toFixed(3)} 元/公斤 ≈ ${dashboardData.pigGrainRatio.value.toFixed(2)}`,
+    explanation: `自计算猪粮比 = 同口径全国外三元猪价 ÷ 同口径玉米价格。本期为 ${dashboardData.pigGrainRatio.pigPrice.toFixed(2)} ÷ ${dashboardData.pigGrainRatio.cornPrice.toFixed(3)} ≈ ${dashboardData.pigGrainRatio.value.toFixed(2)}。计算所用玉米价格采用独立现货口径，与首页农业农村部全国玉米监测均价 2,470 元/吨不是同一数据序列；该结果不是政府发布的官方猪粮比。`,
   },
 ];
 
-const staticCoreMetrics = [
+type CoreMetricDefinition = {
+  label: string; value: string; unit: string; delta: string; date: string; source: string; url: string; meaning: string;
+  signal?: "sow" | "profit" | "piglet";
+  status?: string;
+  tone?: "red" | "yellow" | "green";
+};
+
+const staticCoreMetrics: CoreMetricDefinition[] = [
   {
-    label: "能繁母猪存栏", value: "3,780", unit: "万头", delta: "同比 -6.5%", status: "黄灯 · 合理调减", tone: "yellow",
-    date: "2026 Q2 末", source: "国家统计局", url: "https://www.stats.gov.cn/sj/zxfbhjd/202607/t20260716_1964140.html",
+    label: "能繁母猪存栏", value: dashboardData.sow.count.toLocaleString("zh-CN"), unit: dashboardData.sow.unit, delta: `同比 ${formatSigned(dashboardData.sow.yoy)}`, signal: "sow",
+    date: dashboardData.sow.date, source: dashboardData.sow.source, url: dashboardData.sow.url,
     meaning: "升高通常意味着约 10 个月后的生猪供给压力增加；持续下降才更利于后续周期修复。",
   },
   {
-    label: "自繁自养利润", value: "-190.25", unit: "元/头", delta: "7 月下旬样本", status: "红灯 · 仍在亏损", tone: "red",
-    date: "2026.07.23", source: "公开行业样本", url: "https://stock.finance.sina.com.cn/stock/go.php/vReport_Show/kind/search/rptid/838476333741/index.phtml",
+    label: "自繁自养利润", value: dashboardData.profit.value.toFixed(2), unit: dashboardData.profit.unit, delta: dashboardData.profit.periodLabel, signal: "profit",
+    date: dashboardData.profit.date, source: dashboardData.profit.source, url: dashboardData.profit.url,
     meaning: "数值升高、由负转正，代表行业现金流改善；长期亏损通常会推动产能退出。",
   },
   {
-    label: "全国仔猪价格", value: "22.42", unit: "元/公斤", delta: "环比 -2.5%", status: "黄灯 · 低位整理", tone: "yellow",
-    date: "2026.08 第 1 周", source: "农业农村部", url: "https://xmsyj.moa.gov.cn/jcyj/202608/t20260811_6486584.htm",
+    label: "全国仔猪价格", value: dashboardData.piglet.price.toFixed(2), unit: dashboardData.piglet.unit, delta: `环比 ${formatSigned(dashboardData.piglet.wow)}`, signal: "piglet",
+    date: dashboardData.piglet.date, source: dashboardData.piglet.source, url: dashboardData.piglet.url,
     meaning: "升高常意味着补栏意愿或预期转强；过快上涨也可能增加未来供给并抬高育肥成本。",
   },
   {
-    label: "育肥猪配合饲料", value: "3.35", unit: "元/公斤", delta: "环比 -0.3%", status: "绿灯 · 成本缓降", tone: "green",
-    date: "2026.08 第 1 周", source: "农业农村部", url: "https://xmsyj.moa.gov.cn/jcyj/202608/t20260811_6486584.htm",
+    label: "育肥猪配合饲料", value: dashboardData.feed.price.toFixed(2), unit: "元/公斤", delta: `环比 ${formatSigned(dashboardData.feed.wow)}`, status: "绿灯 · 成本缓降", tone: "green",
+    date: dashboardData.feed.date, source: dashboardData.feed.source, url: dashboardData.feed.url,
     meaning: "与玉米、豆粕同属农业农村部全国监测系列；升高会压缩利润，下降有利于成本端。",
   },
   {
-    label: "自计算猪粮比", value: "4.64", unit: ": 1", delta: "非官方口径", status: "红灯 · 亏损压力", tone: "red",
-    date: "2026.08.23", source: "中国养猪网价格页", url: "https://zhujia.zhuwang.com.cn/indexov.shtml",
-    meaning: "按同一来源页的全国外三元 11.15 元/公斤 ÷ 独立现货口径玉米 2.405 元/公斤计算；该玉米序列不同于首页农业农村部 2,470 元/吨全国监测均价，也不是官方猪粮比。",
+    label: "自计算猪粮比", value: dashboardData.pigGrainRatio.value.toFixed(2), unit: ": 1", delta: "非官方口径", status: "红灯 · 亏损压力", tone: "red",
+    date: dashboardData.pigGrainRatio.date, source: dashboardData.pigGrainRatio.source, url: dashboardData.pigGrainRatio.url,
+    meaning: `按同一来源页的全国外三元 ${dashboardData.pigGrainRatio.pigPrice.toFixed(2)} 元/公斤 ÷ 独立现货口径玉米 ${dashboardData.pigGrainRatio.cornPrice.toFixed(3)} 元/公斤计算；该玉米序列不同于首页农业农村部 2,470 元/吨全国监测均价，也不是官方猪粮比。`,
   },
 ];
 
@@ -464,20 +402,45 @@ export default function Home() {
   const comparison = useMemo(() => buildComparison(mainRange), [mainRange]);
   const threeMonthComparison = useMemo(() => buildComparison("3月"), []);
   const comparableAssets = comparison.items.filter((item) => item.id !== "pig");
-  const allComparableAssetsLagPig = comparableAssets.length > 0 && comparableAssets.every((item) => item.relativeToPig < 0);
+  const allComparableAssetsLagPig = comparableAssets.length > 0 && comparableAssets.every((item) => item.relativeToPig <= 0);
   const visible = securities.filter((item) => (kind === "全部" || item.kind === kind) && `${item.name}${item.code}`.toLowerCase().includes(query.toLowerCase()));
-  const strongest = threeMonthComparison.items
-    .filter((item) => item.id !== "pig")
-    .sort((a, b) => b.intervalReturn - a.intervalReturn)[0];
+  const threeMonthAssets = threeMonthComparison.items.filter((item) => item.id !== "pig");
+  const strongest = [...threeMonthAssets].sort((a, b) => b.relativeToPig - a.relativeToPig)[0];
+  const cycleSignals = deriveCycleSignals({
+    profit: dashboardData.profit.value,
+    sowCount: dashboardData.sow.count,
+    sowYoY: dashboardData.sow.yoy,
+    pigletPrice: dashboardData.piglet.price,
+    pigletWoW: dashboardData.piglet.wow,
+    relativeAssets: threeMonthAssets.map((item) => ({ name: item.name, relativeToPig: item.relativeToPig })),
+  });
+  const toneLabel = { red: "红灯", yellow: "黄灯", green: "绿灯" } as const;
+  const cycleSteps = [
+    { status: "底部承压", tone: "red" },
+    { status: "修复观察", tone: "yellow" },
+    { status: "景气盈利", tone: "green" },
+  ] as const;
+  const currentStageIndex = cycleSteps.findIndex((step) => step.status === cycleSignals.cycleStage.status);
   const coreMetrics = [
-    ...staticCoreMetrics,
+    ...staticCoreMetrics.map((item) => {
+      const signal = item.signal === "sow"
+        ? cycleSignals.sowSignal
+        : item.signal === "profit"
+          ? cycleSignals.profitSignal
+          : item.signal === "piglet"
+            ? cycleSignals.pigletSignal
+            : null;
+      return signal
+        ? { ...item, status: `${toneLabel[signal.tone]} · ${signal.status}`, tone: signal.tone }
+        : { ...item, status: item.status!, tone: item.tone! };
+    }),
     {
       label: "猪企相对猪价",
       value: strongest ? `${strongest.name} ${formatSigned(strongest.intervalReturn)}` : "暂无可靠数据",
       unit: "同期",
       delta: strongest ? `相对猪价 ${formatSigned(strongest.relativeToPig, 1, "pct")}` : "历史数据不足",
-      status: "黄灯 · 股价分化",
-      tone: "yellow",
+      status: `${toneLabel[cycleSignals.equitySignal.tone]} · ${cycleSignals.equitySignal.status}`,
+      tone: cycleSignals.equitySignal.tone,
       date: threeMonthComparison.startDate && threeMonthComparison.endDate
         ? `${shortDate(threeMonthComparison.startDate)}—${shortDate(threeMonthComparison.endDate)}`
         : "待更新",
@@ -501,11 +464,16 @@ export default function Home() {
       </header>
 
       <section className="hero">
-        <div><p className="eyebrow">MARKET OVERVIEW / 市场总览</p><h1>利润仍在水下，<em>产能开始去化。</em></h1><p className="hero-copy">把猪价、仔猪、饲料、母猪产能、养殖利润与猪企股价放进同一套周期框架，优先看趋势与验证，不被单日涨跌带偏。</p></div>
-        <aside className="cycle-card" aria-label="当前周期位置：红灯，底部承压">
-          <div className="cycle-card-head"><span>当前周期位置</span><strong><i />红灯 · 底部承压</strong></div>
-          <ol className="cycle-steps" aria-label="周期位置图例"><li className="red active"><span className="cycle-light"/><b>底部承压</b><small>当前</small></li><li className="yellow"><span className="cycle-light"/><b>修复观察</b><small>待确认</small></li><li className="green"><span className="cycle-light"/><b>景气盈利</b><small>未到达</small></li></ol>
-          <p>利润样本仍为负，猪粮比偏低；能繁母猪同比下降是积极变化，但还要等猪价与利润同步改善。</p>
+        <div><p className="eyebrow">MARKET OVERVIEW / 市场总览</p><h1>{cycleSignals.heroHeadline.lead}<em>{cycleSignals.heroHeadline.emphasis}</em></h1><p className="hero-copy">把猪价、仔猪、饲料、母猪产能、养殖利润与猪企股价放进同一套周期框架，优先看趋势与验证，不被单日涨跌带偏。</p></div>
+        <aside className="cycle-card" aria-label={`当前周期位置：${toneLabel[cycleSignals.cycleStage.tone]}，${cycleSignals.cycleStage.status}`}>
+          <div className="cycle-card-head"><span>当前周期位置</span><strong className={cycleSignals.cycleStage.tone}><i />{toneLabel[cycleSignals.cycleStage.tone]} · {cycleSignals.cycleStage.status}</strong></div>
+          <ol className="cycle-steps" aria-label="周期位置图例">{cycleSteps.map((step, index) => (
+            <li className={`${step.tone} ${index === currentStageIndex ? "active" : ""}`} key={step.status}>
+              <span className="cycle-light"/><b>{step.status}</b>
+              <small>{index === currentStageIndex ? "当前" : index < currentStageIndex ? "已通过" : "待确认"}</small>
+            </li>
+          ))}</ol>
+          <p>{cycleSignals.cycleStage.description}</p>
           <small className="cycle-caption">颜色表示行业周期状态，不代表股票涨跌，也不是买卖信号。</small>
         </aside>
       </section>
@@ -563,7 +531,31 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="signal-section"><div className="signal-intro"><p className="eyebrow">CYCLE SIGNALS</p><h2>四个问题，判断周期走到哪里</h2><p>价格是结果。供给退出、成本变化、利润修复与市场预期是否共振，才是周期反转的验证链。</p></div><div className="signal-grid"><article><span>01</span><h3>养殖利润是否转正？</h3><strong className="red">-190 元/头</strong><p>7 月下旬行业样本仍亏损，说明猪价尚未稳定脱离成本压力。</p></article><article><span>02</span><h3>母猪产能是否去化？</h3><strong className="neutral">3780 万头</strong><p>二季度末同比减少 6.5%，方向积极，但仍接近正常保有量。</p></article><article><span>03</span><h3>仔猪是否率先转强？</h3><strong className="neutral">低位整理</strong><p>8 月第 1 周 22.42 元/公斤、环比下跌，补栏预期尚未形成持续上行。</p></article><article><span>04</span><h3>股价是否抢跑猪价？</h3><strong className="green">个股分化</strong><p>共同区间内神农相对最强，但样本猪企与 ETF 均落后同期猪价，板块尚未形成一致趋势。</p></article></div></section>
+      <section className="signal-section">
+        <div className="signal-intro"><p className="eyebrow">CYCLE SIGNALS</p><h2>四个问题，判断周期走到哪里</h2><p>价格是结果。供给退出、成本变化、利润修复与市场预期是否共振，才是周期反转的验证链。</p></div>
+        <div className="signal-grid">
+          <article>
+            <span>01</span><h3>养殖利润是否转正？</h3>
+            <strong className={cycleSignals.profitSignal.tone}>{cycleSignals.profitSignal.valueText}</strong>
+            <p>{cycleSignals.profitSignal.status}：{cycleSignals.profitSignal.description}</p>
+          </article>
+          <article>
+            <span>02</span><h3>母猪产能是否去化？</h3>
+            <strong className={cycleSignals.sowSignal.tone}>{cycleSignals.sowSignal.valueText}</strong>
+            <p>{cycleSignals.sowSignal.status}：{cycleSignals.sowSignal.description}</p>
+          </article>
+          <article>
+            <span>03</span><h3>仔猪是否率先转强？</h3>
+            <strong className={cycleSignals.pigletSignal.tone}>{cycleSignals.pigletSignal.status}</strong>
+            <p>{cycleSignals.pigletSignal.valueText}。{cycleSignals.pigletSignal.description}</p>
+          </article>
+          <article>
+            <span>04</span><h3>股价是否抢跑猪价？</h3>
+            <strong className={cycleSignals.equitySignal.tone}>{cycleSignals.equitySignal.status}</strong>
+            <p>{cycleSignals.equitySignal.description}</p>
+          </article>
+        </div>
+      </section>
 
       <footer><div><strong>猪周期观察</strong><span>只做观察，不做预测。</span></div><p>页面更新日 {PAGE_UPDATED_DATE}，不等于所有产业指标的数据日期。证券行情截至 {MARKET_CUTOFF} 正式收盘；159867 主行情使用交易所收盘价，NAV 仅作辅助。玉米、豆粕、育肥猪配合饲料采用农业农村部 2026 年 8 月第 1 周全国监测系列；全国外三元为公开报价样本。猪粮比按同一来源页的猪价与独立现货口径玉米报价自计算，所用玉米序列不同于首页农业农村部全国监测均价，也不是官方猪粮比。数据更新失败或历史不足时不补点、不伪装为最新数据；仅供个人研究，不构成投资建议。</p></footer>
     </main>

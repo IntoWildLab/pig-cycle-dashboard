@@ -41,6 +41,10 @@ main { min-height: 100vh; }
 .cycle-card-head > span { color: var(--muted); font-size: 11px; }
 .cycle-card-head > strong { display: inline-flex; align-items: center; gap: 7px; padding: 7px 10px; border-radius: 99px; color: #9d3f33; background: rgba(207,85,69,.1); font-size: 11px; }
 .cycle-card-head > strong i { width: 8px; height: 8px; border-radius: 99px; background: var(--red); box-shadow: 0 0 0 4px rgba(207,85,69,.12); }
+.cycle-card-head > strong.yellow { color: #95671c; background: rgba(192,138,47,.12); }
+.cycle-card-head > strong.yellow i { background: var(--yellow); box-shadow: 0 0 0 4px rgba(192,138,47,.12); }
+.cycle-card-head > strong.green { color: #31745a; background: rgba(63,137,108,.11); }
+.cycle-card-head > strong.green i { background: var(--green); box-shadow: 0 0 0 4px rgba(63,137,108,.12); }
 .cycle-steps { position: relative; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 22px 0 0; padding: 0; list-style: none; }
 .cycle-steps::before { content: ""; position: absolute; top: 9px; left: 15%; right: 15%; height: 2px; background: var(--line); }
 .cycle-steps li { position: relative; z-index: 1; display: grid; justify-items: center; gap: 6px; color: var(--muted); text-align: center; }
@@ -49,10 +53,14 @@ main { min-height: 100vh; }
 .cycle-steps .yellow .cycle-light { background: var(--yellow); }
 .cycle-steps .green .cycle-light { background: var(--green); }
 .cycle-steps li:not(.active) .cycle-light { opacity: .28; filter: grayscale(.35); }
-.cycle-steps li.active .cycle-light { box-shadow: 0 0 0 1px var(--red), 0 0 0 7px rgba(207,85,69,.11); }
+.cycle-steps li.red.active .cycle-light { box-shadow: 0 0 0 1px var(--red), 0 0 0 7px rgba(207,85,69,.11); }
+.cycle-steps li.yellow.active .cycle-light { box-shadow: 0 0 0 1px var(--yellow), 0 0 0 7px rgba(192,138,47,.11); }
+.cycle-steps li.green.active .cycle-light { box-shadow: 0 0 0 1px var(--green), 0 0 0 7px rgba(63,137,108,.11); }
 .cycle-steps b { font-size: 11px; }
 .cycle-steps small { font-size: 9px; color: #aaa399; }
-.cycle-steps .active b { color: #9d3f33; }
+.cycle-steps .red.active b { color: #9d3f33; }
+.cycle-steps .yellow.active b { color: #95671c; }
+.cycle-steps .green.active b { color: #31745a; }
 .cycle-card > p { margin: 20px 0 0; padding-top: 15px; border-top: 1px solid var(--line); color: var(--muted); font-size: 11px; line-height: 1.7; }
 .cycle-caption { display: block; margin-top: 8px; color: #9b9489; font-size: 9px; line-height: 1.5; }
 
@@ -268,6 +276,7 @@ tbody tr:last-child td { border-bottom: 0; }
 .signal-grid h3 { margin: 17px 0 10px; font-size: 13px; font-weight: 600; }
 .signal-grid strong { font-family: Georgia, "Songti SC", serif; font-size: 24px; }
 .signal-grid .red { color: #eb8069; }
+.signal-grid .yellow { color: #d8b66f; }
 .signal-grid .green { color: #78b598; }
 .signal-grid .neutral { color: #d8c9ae; }
 .signal-grid p { margin: 12px 0 0; color: #aaa398; font-size: 11px; line-height: 1.7; }
