@@ -19,6 +19,32 @@ export type Series = {
   nav?: { value: number; date: string; sourceUrl: string };
 };
 
+function officialCloseSnapshot(history: Point[]) {
+  if (history.length < 2) {
+    throw new Error("Official close history requires at least two points");
+  }
+  const previous = history[history.length - 2];
+  const latest = history[history.length - 1];
+  return {
+    latest: latest.value,
+    latestDate: latest.date,
+    change: (latest.value / previous.value - 1) * 100,
+  };
+}
+
+const marketSnapshots = {
+  muyuan: officialCloseSnapshot(historyById.muyuan),
+  wens: officialCloseSnapshot(historyById.wens),
+  newhope: officialCloseSnapshot(historyById.newhope),
+  shennong: officialCloseSnapshot(historyById.shennong),
+  etf: officialCloseSnapshot(historyById.etf),
+};
+const marketCutoff = marketSnapshots.muyuan.latestDate;
+
+if (!Object.values(marketSnapshots).every(({ latestDate }) => latestDate === marketCutoff)) {
+  throw new Error("Official close histories must share the same latest date");
+}
+
 export const dashboardData = {
   profit: {
     value: -190.25,
@@ -60,8 +86,8 @@ export const dashboardData = {
     url: "https://xmsyj.moa.gov.cn/jcyj/202608/t20260811_6486584.htm",
   },
   market: {
-    cutoff: "2026-08-21",
-    pageUpdatedDate: "2026-08-23",
+    cutoff: marketCutoff,
+    pageUpdatedDate: marketCutoff,
   },
 } as const;
 
@@ -76,33 +102,33 @@ export const series: Series[] = [
   },
   {
     id: "muyuan", name: "牧原股份", code: "002714", kind: "公司", color: "#ca7348",
-    unit: "元", latest: 39.07, latestDate: "2026-08-21", change: -1.88,
-    marketStatus: "officialClose", sourceName: "英为财情历史行情（每日收盘字段）",
-    sourceUrl: "https://cn.investing.com/equities/muyuan-foodstuff-a-historical-data", history: historyById.muyuan,
+    unit: "元", ...marketSnapshots.muyuan,
+    marketStatus: "officialClose", sourceName: "东方财富历史行情（未复权日 K 收盘）",
+    sourceUrl: "https://quote.eastmoney.com/sz002714.html", history: historyById.muyuan,
   },
   {
     id: "wens", name: "温氏股份", code: "300498", kind: "公司", color: "#d99b2b",
-    unit: "元", latest: 13.59, latestDate: "2026-08-21", change: -1.45,
-    marketStatus: "officialClose", sourceName: "英为财情历史行情（每日收盘字段）",
-    sourceUrl: "https://cn.investing.com/equities/guangdong-wens-foodstuff-historical-data", history: historyById.wens,
+    unit: "元", ...marketSnapshots.wens,
+    marketStatus: "officialClose", sourceName: "东方财富历史行情（未复权日 K 收盘）",
+    sourceUrl: "https://quote.eastmoney.com/sz300498.html", history: historyById.wens,
   },
   {
     id: "newhope", name: "新希望", code: "000876", kind: "公司", color: "#4c9273",
-    unit: "元", latest: 6.90, latestDate: "2026-08-21", change: -1.85,
-    marketStatus: "officialClose", sourceName: "英为财情历史行情（每日收盘字段）",
-    sourceUrl: "https://cn.investing.com/equities/new-hope-liuhe-a-historical-data", history: historyById.newhope,
+    unit: "元", ...marketSnapshots.newhope,
+    marketStatus: "officialClose", sourceName: "东方财富历史行情（未复权日 K 收盘）",
+    sourceUrl: "https://quote.eastmoney.com/sz000876.html", history: historyById.newhope,
   },
   {
     id: "shennong", name: "神农集团", code: "605296", kind: "公司", color: "#4f7fa8",
-    unit: "元", latest: 30.23, latestDate: "2026-08-21", change: -0.62,
-    marketStatus: "officialClose", sourceName: "英为财情历史行情（每日收盘字段）",
-    sourceUrl: "https://cn.investing.com/equities/shennong-agricultural-industry-historical-data", history: historyById.shennong,
+    unit: "元", ...marketSnapshots.shennong,
+    marketStatus: "officialClose", sourceName: "东方财富历史行情（未复权日 K 收盘）",
+    sourceUrl: "https://quote.eastmoney.com/sh605296.html", history: historyById.shennong,
   },
   {
     id: "etf", name: "畜牧ETF", code: "159867", kind: "ETF", color: "#7867a4",
-    unit: "元", latest: 0.541, latestDate: "2026-08-21", change: -1.64,
-    marketStatus: "officialClose", sourceName: "英为财情历史行情（每日交易收盘价）",
-    sourceUrl: "https://cn.investing.com/etfs/159867-historical-data", history: historyById.etf,
+    unit: "元", ...marketSnapshots.etf,
+    marketStatus: "officialClose", sourceName: "东方财富历史行情（未复权日 K 交易收盘）",
+    sourceUrl: "https://quote.eastmoney.com/sz159867.html", history: historyById.etf,
     nav: { value: 0.5505, date: "2026-08-20", sourceUrl: "https://fund.eastmoney.com/cnjy_jzzzl.html" },
   },
 ];

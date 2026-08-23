@@ -152,8 +152,10 @@ function buildComparison(range: string): ComparisonResult {
       ? item.marketStatus === "sampleObservation"
       : item.marketStatus === "officialClose";
     return correctType
-      && (item.id === "pig" || item.latestDate === MARKET_CUTOFF)
-      && item.history.some((point) => point.date === MARKET_CUTOFF);
+      && (item.id === "pig" || (
+        item.latestDate === MARKET_CUTOFF
+        && item.history.some((point) => point.date === MARKET_CUTOFF)
+      ));
   });
   const excluded = series.filter((item) => !valid.includes(item));
   if (!valid.some((item) => item.id === "pig")) {
