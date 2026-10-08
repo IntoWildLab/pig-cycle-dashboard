@@ -196,6 +196,7 @@ export const historyById: Record<string, HistoryPoint[]> = {
     { date: "2026-09-28", value: 41.71 },
     { date: "2026-09-29", value: 42.29 },
     { date: "2026-09-30", value: 42.45 },
+    { date: "2026-10-08", value: 41.13 },
   ],
   wens: [
     { date: "2026-05-20", value: 14.39 },
@@ -292,6 +293,7 @@ export const historyById: Record<string, HistoryPoint[]> = {
     { date: "2026-09-28", value: 14.91 },
     { date: "2026-09-29", value: 15.08 },
     { date: "2026-09-30", value: 15.12 },
+    { date: "2026-10-08", value: 14.87 },
   ],
   newhope: [
     { date: "2026-05-20", value: 8.22 },
@@ -388,6 +390,7 @@ export const historyById: Record<string, HistoryPoint[]> = {
     { date: "2026-09-28", value: 6.82 },
     { date: "2026-09-29", value: 6.89 },
     { date: "2026-09-30", value: 6.92 },
+    { date: "2026-10-08", value: 6.77 },
   ],
   shennong: [
     { date: "2026-05-20", value: 28.91 },
@@ -484,6 +487,7 @@ export const historyById: Record<string, HistoryPoint[]> = {
     { date: "2026-09-28", value: 31.47 },
     { date: "2026-09-29", value: 31.6 },
     { date: "2026-09-30", value: 31.48 },
+    { date: "2026-10-08", value: 30.22 },
   ],
   etf: [
     { date: "2026-05-20", value: 0.584 },
@@ -580,5 +584,6 @@ export const historyById: Record<string, HistoryPoint[]> = {
     { date: "2026-09-28", value: 0.536 },
     { date: "2026-09-29", value: 0.537 },
     { date: "2026-09-30", value: 0.542 },
+    { date: "2026-10-08", value: 0.533 },
   ],
 };
